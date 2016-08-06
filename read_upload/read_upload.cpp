@@ -1,4 +1,7 @@
-// v0.0.1
+// What is the proper indentation?
+// What do docstrings look like?
+// What is the flake8 of C++?
+
 #include <Wire.h>
 
 #include <Adafruit_Sensor.h>
@@ -24,155 +27,168 @@ Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(30302);
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 
-void initIMU()
-{
-  if(!accel.begin())
-  {
-    /* There was a problem detecting the LSM303 ... check your connections */
-    Serial.println(F("Ooops, no LSM303 detected ... Check your wiring!"));
-    while(1);
-  }
-  if(!mag.begin())
-  {
-    /* There was a problem detecting the LSM303 ... check your connections */
-    Serial.println("Ooops, no LSM303 detected ... Check your wiring!");
-    while(1);
-  }
+//
+struct BarfDataType {
+    int timestamp;
+    
+    float roll;
+    float pitch;
+    float heading;
+    
+    float shuntvoltage;
+    float busvoltage;
+    float current_mA;
+    float loadvoltage;
+};
+
+BarfDataType sensorReadings;
+
+
+//
+void initIMU() {
+    if(!accel.begin()) {
+        /* There was a problem detecting the LSM303 ... check your connections */
+        Serial.println(F("no LSM303 detected"));
+        while(1);
+    }
+    if(!mag.begin()) {
+        /* There was a problem detecting the LSM303 ... check your connections */
+        Serial.println("no LSM303 detected");
+        while(1);
+    }
 }
 
 
-void readINA219() {
-  float shuntvoltage = 0;
-  float busvoltage = 0;
-  float current_mA = 0;
-  float loadvoltage = 0;
-
-  shuntvoltage = ina219.getShuntVoltage_mV();
-  busvoltage = ina219.getBusVoltage_V();
-  current_mA = ina219.getCurrent_mA();
-  loadvoltage = busvoltage + (shuntvoltage / 1000);
-
-  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-  Serial.println("");
+//
+void readINA219(BarfDataType &variableName) {
+    float shuntvoltage = 0;
+    float busvoltage = 0;
+    float current_mA = 0;
+    float loadvoltage = 0;
+    
+    // Take a look at the ina219 library.
+    variableName.shuntvoltage = ina219.getShuntVoltage_mV();
+    variableName.busvoltage = ina219.getBusVoltage_V();
+    variableName.current_mA = ina219.getCurrent_mA();
+    variableName.loadvoltage = busvoltage + (shuntvoltage / 1000);
 }
 
 
-void readIMU() {
-
-  sensors_event_t accel_event;
-  sensors_event_t mag_event;
-  sensors_vec_t   orientation;
-
-  /* Calculate pitch and roll from the raw accelerometer data */
-  accel.getEvent(&accel_event);
-  if (dof.accelGetOrientation(&accel_event, &orientation))
-  {
-    /* 'orientation' should have valid .roll and .pitch fields */
-    Serial.print(F("Roll: "));
-    Serial.print(orientation.roll);
-    Serial.print(F("; "));
-    Serial.print(F("Pitch: "));
-    Serial.print(orientation.pitch);
-    Serial.print(F("; "));
-  }
-  
-  /* Calculate the heading using the magnetometer */
-  mag.getEvent(&mag_event);
-  if (dof.magGetOrientation(SENSOR_AXIS_Z, &mag_event, &orientation))
-  {
-    /* 'orientation' should have valid .heading data now */
-    Serial.print(F("Heading: "));
-    Serial.print(orientation.heading);
-    Serial.print(F("; "));
-  }
-
-  Serial.println(F(""));
+//
+void readIMU(BarfDataType &variableName) {
+    sensors_event_t accel_event;
+    sensors_event_t mag_event;
+    sensors_vec_t   orientation;
+    
+    /* Calculate pitch and roll from the raw accelerometer data */
+    accel.getEvent(&accel_event);
+    if (dof.accelGetOrientation(&accel_event, &orientation))
+    {
+        /* 'orientation' should have valid .roll and .pitch fields */
+        variableName.roll = orientation.roll;
+        variableName.pitch = orientation.pitch;
+    }
+    
+    /* Calculate the heading using the magnetometer */
+    mag.getEvent(&mag_event);
+    if (dof.magGetOrientation(SENSOR_AXIS_Z, &mag_event, &orientation))
+    {
+        /* 'orientation' should have valid .heading data now */
+        variableName.heading = orientation.heading;
+    }
 }
 
 
+//
 void setup() {
-  Serial.begin(115200);
-  delay(100);
-  
-  uint32_t currentFrequency;
-  
-  ina219.begin();
-
-  initIMU();
-
-  // wifi connection
-  
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("wifi connected");  
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-
+    Serial.begin(115200);
+    delay(100);
+   
+    // current sensor
+    uint32_t currentFrequency;
+    ina219.begin();
+   
+    // imu
+    initIMU();
+    
+    // wifi connection
+    // TODO: capitalize constants
+    Serial.print("connecting to ");
+    Serial.print(ssid);
+    // TODO: read WiFi library
+    WiFi.begin(ssid, password);
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(500);
+        Serial.print(".");
+    }
+    Serial.print("wifi connected, ip address: ");
+    Serial.println(WiFi.localIP());
+   
+    // status led
+    pinMode(12, OUTPUT);
 }
 
 
-const int httpPort = 80;
-String barf = "some reading";
-
-
-void loop1() {
-
-  readINA219();
-
-  readIMU();
-
-  // Serial.print("connecting to ");
-  // Serial.println(host);
-  
-  // Use WiFiClient class to create TCP connections
-  WiFiClient client;
-  //const int httpPort = 80;
-  if (!client.connect("host", httpPort)) {
-    Serial.println("connection failed");
-    return;
-  }
-
-  url += "?data=" + barf;
-  // request
-  client.print(String("GET ") + url + " HTTP/1.1\r\n" +
-               "Host: " + host + "\r\n" + 
-               "Connection: close\r\n\r\n");
-  // yield?
-  // delay(500);
-  yield();
-  
-  /*
-  while(client.available()){
-    String line = client.readStringUntil('\r');
-    Serial.print(line);
-  }
-  */
-}
-
-
+//
 void loop() {
-  //readINA219();
-  //readIMU();
-
-  HTTPClient http;
-  
-  http.begin("http://138.68.20.196:9023/");
-  http.addHeader("Content-Type", "text/plain");
-  auto httpCode = http.GET();
-  Serial.print("HTTP CODE: ");
-  Serial.println(httpCode);
-  String payload = http.getString();
-  Serial.println(payload);
-  //REQUIRE(httpCode == HTTP_CODE_OK);
-  //http.end();
-
-  delay(100);
+    digitalWrite(12, HIGH);
+    delay(50);
+    digitalWrite(12, LOW);
+   
+    // TODO: Network/server timestamp? Do we even need a timestamp from the device?
+    sensorReadings.timestamp = millis();
+    
+    readINA219(sensorReadings);
+    readIMU(sensorReadings);
+    
+    // TODO: graceful shutdown if voltage drops too low
+   
+    // is concatenating resource intensive?
+    Serial.print("Bus Voltage:   ");
+    Serial.print(sensorReadings.busvoltage);
+    Serial.println(" V");
+    Serial.print("Shunt Voltage: ");
+    Serial.print(sensorReadings.shuntvoltage);
+    Serial.println(" mV");
+    Serial.print("Load Voltage:  ");
+    Serial.print(sensorReadings.loadvoltage);
+    Serial.println(" V");
+    Serial.print("Current:       ");
+    Serial.print(sensorReadings.current_mA);
+    Serial.println(" mA");
+    Serial.println("");
+   
+    // units of measurement?
+    // Serial.print(F()); flash memory?
+    Serial.print("Roll:          ");
+    Serial.println(sensorReadings.roll);
+    Serial.print("Pitch:         ");
+    Serial.println(sensorReadings.pitch);
+    Serial.print("Heading:       ");
+    Serial.println(sensorReadings.heading);
+   
+    // POST sensor data to API
+    HTTPClient http;
+    // TODO: config.h
+    http.begin("http://138.68.20.196:9023/");
+    // TODO: json
+    http.addHeader("Content-Type", "text/plain");
+    http.POST("{\"value\": 20}");
+    // ?
+    http.writeToStream(&Serial);
+    /*
+    // TODO: POST
+    auto httpCode = http.GET();
+    Serial.print("HTTP CODE: ");
+    Serial.println(httpCode);
+    String payload = http.getString();
+    Serial.println(payload);
+    */
+    //REQUIRE(httpCode == HTTP_CODE_OK);
+    http.end();
+    
+    yield();
+    // TODO: close wifi connection?
+    // TODO: delay and/or interrupt trigger
+    //delay(100);
 }

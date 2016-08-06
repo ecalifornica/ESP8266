@@ -8,17 +8,9 @@
 //
 // Written by Tony DiCola for Adafruit Industries.  
 // MIT license, all text above must be included in any redistribution.
-#include <ESP8266WiFi.h>
 #include "Adafruit_IO_Client.h"
 
-#include <Wire.h>
 
-#include <Adafruit_Sensor.h>
-#include <Adafruit_LSM303_U.h>
-#include <Adafruit_L3GD20_U.h>
-#include <Adafruit_9DOF.h>
-
-#include <Adafruit_INA219.h>
 
 // Configure WiFi access point details.
 #define WLAN_SSID  "barf"
@@ -26,16 +18,6 @@
 
 // Configure Adafruit IO access.
 #define AIO_KEY    "barf"
-
-Adafruit_INA219 ina219;
-
-/* Assign a unique ID to the sensors */
-Adafruit_9DOF dof = Adafruit_9DOF();
-Adafruit_LSM303_Accel_Unified accel = Adafruit_LSM303_Accel_Unified(30301);
-Adafruit_LSM303_Mag_Unified mag = Adafruit_LSM303_Mag_Unified(30302);
-
-/* Update this with the correct SLP for accurate altitude measurements */
-float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 
 // Create an ESP8266 WiFiClient class to connect to the AIO server.
@@ -71,7 +53,7 @@ struct BarfDataType {
     float current_mA;
     float loadvoltage;
 };
-struct sensorReadings = BarfDataType;
+BarfDataType sensorReadings;
 
 
 void initIMU() {
@@ -122,25 +104,20 @@ void readIMU() {
 }
 
 
-float readINA219(struct &sensorReadings) {
-  sensorReadings.shuntvoltage = 0;
-  sensorReadings.busvoltage = 0;
-  sensorReadings.current_mA = 0;
-  sensorReadings.loadvoltage = 0;
+float readINA219(BarfDataType &variableName) {
+  variableName.shuntvoltage = 0;
+  variableName.busvoltage = 0;
+  variableName.current_mA = 0;
+  variableName.loadvoltage = 0;
 
-  sensorReadings.shuntvoltage = ina219.getShuntVoltage_mV();
-  sensorReadings.busvoltage = ina219.getBusVoltage_V();
-  sensorReadings.current_mA = ina219.getCurrent_mA();
-  sensorReadings.loadvoltage = busvoltage + (shuntvoltage / 1000);
+  variableName.shuntvoltage = ina219.getShuntVoltage_mV();
+  variableName.busvoltage = ina219.getBusVoltage_V();
+  variableName.current_mA = ina219.getCurrent_mA();
+  variableName.loadvoltage = variableName.busvoltage + (variableName.shuntvoltage / 1000);
 
-  Serial.print("Bus Voltage:   "); Serial.print(busvoltage); Serial.println(" V");
-  Serial.print("Shunt Voltage: "); Serial.print(shuntvoltage); Serial.println(" mV");
-  Serial.print("Load Voltage:  "); Serial.print(loadvoltage); Serial.println(" V");
-  Serial.print("Current:       "); Serial.print(current_mA); Serial.println(" mA");
-  Serial.println("");
   
   // Turn off the system when this drops below threshold.
-  return busvoltage;
+  return variableName.busvoltage;
 }
 
 
@@ -180,12 +157,17 @@ void setup() {
 }
 
 void loop() {
-  barfnoises.timestamp = NTP_or_something();
+  sensorReadings.timestamp = millis();
   digitalWrite(12, HIGH);
   delay(100);
   digitalWrite(12, LOW);
-  float barfer = readINA219();
+  float barfer = readINA219(sensorReadings);
   readIMU();
+  Serial.print("Bus Voltage:   "); Serial.print(sensorReadings.busvoltage); Serial.println(" V");
+  Serial.print("Shunt Voltage: "); Serial.print(sensorReadings.shuntvoltage); Serial.println(" mV");
+  Serial.print("Load Voltage:  "); Serial.print(sensorReadings.loadvoltage); Serial.println(" V");
+  Serial.print("Current:       "); Serial.print(sensorReadings.current_mA); Serial.println(" mA");
+  Serial.println("");
   
   // To write a value just call the feed's send function and pass it the value.
   // Send will create the feed on Adafruit IO if it doesn't already exist and
@@ -231,5 +213,5 @@ void loop() {
 
   // Now wait 10 more seconds and repeat.
   //Serial.println(F("Waiting 10 seconds and then writing a new feed value."));
-  delay(15000);
+  //delay(15000);
 }
