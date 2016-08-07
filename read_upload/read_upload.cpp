@@ -169,17 +169,15 @@ void loop() {
    
     // POST sensor data to API
     HTTPClient http;
-    // TODO: config.h
-    http.begin("http://138.68.20.196:9023/");
+    http.begin(HOST);
     // TODO: json
     //http.addHeader("Content-Type", "text/plain");
-    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     //http.POST("{\"value\": 20}");
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     http.POST("title=foo&body=bar&userId=1");
     // ?
     http.writeToStream(&Serial);
     /*
-    // TODO: POST
     auto httpCode = http.GET();
     Serial.print("HTTP CODE: ");
     Serial.println(httpCode);
