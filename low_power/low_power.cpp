@@ -47,7 +47,10 @@ void readINA219(BarfDataType &variableName) {
 
 //
 void readSoilMoisture(BarfDataType &variableName) {
+    digitalWrite(14, HIGH);
+    delay(10);
     float _soilMoisture = analogRead(A0);
+    digitalWrite(14, LOW);
     
     // map soil moisture readings to decimal.
     variableName.soilMoisture = map(_soilMoisture, 0, 1023, 0, 100);
@@ -76,6 +79,7 @@ void setup() {
     Serial.println(WiFi.localIP());
    
     // status led
+    // replace with config variable
     pinMode(12, OUTPUT);
     // soil moisture sensor power
     pinMode(14, OUTPUT);
