@@ -1,0 +1,4 @@
+const char* ssid = "network name";
+const char* password = "password";
+const char* host = "www.host.com";
+String url = "/api/"; 
