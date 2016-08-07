@@ -112,11 +112,10 @@ void setup() {
     initIMU();
     
     // wifi connection
-    // TODO: capitalize constants
     Serial.print("connecting to ");
-    Serial.print(ssid);
+    Serial.print(SSID);
     // TODO: read WiFi library
-    WiFi.begin(ssid, password);
+    WiFi.begin(SSID, PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
