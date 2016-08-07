@@ -172,8 +172,10 @@ void loop() {
     // TODO: config.h
     http.begin("http://138.68.20.196:9023/");
     // TODO: json
-    http.addHeader("Content-Type", "text/plain");
-    http.POST("{\"value\": 20}");
+    //http.addHeader("Content-Type", "text/plain");
+    http.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    //http.POST("{\"value\": 20}");
+    http.POST("title=foo&body=bar&userId=1");
     // ?
     http.writeToStream(&Serial);
     /*
