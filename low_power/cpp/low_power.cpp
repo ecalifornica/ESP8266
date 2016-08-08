@@ -24,7 +24,7 @@ struct BarfDataType {
     float current_mA;
     float loadvoltage;
     
-    float soilMoisture;
+    int soilMoisture;
 };
 
 BarfDataType sensorReadings;
@@ -49,7 +49,7 @@ void readINA219(BarfDataType &variableName) {
 void readSoilMoisture(BarfDataType &variableName) {
     digitalWrite(14, HIGH);
     delay(10);
-    float _soilMoisture = analogRead(A0);
+    int _soilMoisture = analogRead(A0);
     digitalWrite(14, LOW);
     
     // map soil moisture readings to decimal.
@@ -68,9 +68,9 @@ void setup() {
    
     // wifi connection
     Serial.print("connecting to ");
-    Serial.print(SSID);
+    Serial.print(_SSID);
     // TODO: read WiFi library
-    WiFi.begin(SSID, PASSWORD);
+    WiFi.begin(_SSID, PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -116,6 +116,19 @@ void loop() {
     Serial.println("");
     Serial.print("Soil moisture: ");
     Serial.println(sensorReadings.soilMoisture);
+    
+    //char barf[] = printf("busv="
+    String soil_moisture = "soil_moisture=";
+    String upload = soil_moisture + sensorReadings.soilMoisture;
+    String bus_voltage = "&bus_voltage=";
+    upload += bus_voltage + sensorReadings.busvoltage;
+    String shunt_string = "&shunt_voltage=";
+    String load_string = "&load_voltage=";
+    String current_string = "&current_string=";
+    upload += shunt_string + sensorReadings.shuntvoltage;
+    upload += load_string + sensorReadings.loadvoltage;
+    upload += current_string + sensorReadings.current_mA;
+    Serial.println(upload);
    
     // POST sensor data to API
     HTTPClient http;
@@ -126,12 +139,15 @@ void loop() {
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
     // TODO: properly concatenate with sensor readings
     http.POST("title=foo&body=bar&userId=1");
+    //http.POST(upload);
     // ?
     http.writeToStream(&Serial);
     http.end();
     
     yield();
-    ESP.deepSleep(5 * 1000000, WAKE_RF_DEFAULT);
+    delay(5000);
+    //ESP.deepSleep(5 * 1000000, WAKE_RF_DEFAULT);
+    Serial.println("NEVER GETS HERE");
     // TODO: close wifi connection?
     // TODO: delay and/or interrupt trigger
     //delay(100);
