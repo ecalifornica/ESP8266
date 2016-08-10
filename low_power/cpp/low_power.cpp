@@ -5,7 +5,6 @@
 #include <Wire.h>
 
 #include <Adafruit_Sensor.h>
-
 #include <Adafruit_INA219.h>
 
 #include <ESP8266WiFi.h>
@@ -24,6 +23,7 @@ struct BarfDataType {
     float current_mA;
     float loadvoltage;
     
+    int rawSoilMoisture;
     int soilMoisture;
 };
 
@@ -48,12 +48,11 @@ void readINA219(BarfDataType &variableName) {
 //
 void readSoilMoisture(BarfDataType &variableName) {
     digitalWrite(14, HIGH);
-    delay(10);
-    int _soilMoisture = analogRead(A0);
+    delay(100);
+    variableName.rawSoilMoisture = analogRead(A0);
     digitalWrite(14, LOW);
-    
     // map soil moisture readings to decimal.
-    variableName.soilMoisture = map(_soilMoisture, 0, 1023, 0, 100);
+    variableName.soilMoisture = map(variableName.rawSoilMoisture, 0, 1023, 0, 100);
 }
 
 
@@ -68,9 +67,9 @@ void setup() {
    
     // wifi connection
     Serial.print("connecting to ");
-    Serial.print(_SSID);
+    Serial.print(NETWORK_SSID);
     // TODO: read WiFi library
-    WiFi.begin(_SSID, PASSWORD);
+    WiFi.begin(NETWORK_SSID, NETWORK_PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
         delay(500);
         Serial.print(".");
@@ -101,6 +100,7 @@ void loop() {
     readSoilMoisture(sensorReadings);
    
     // is concatenating resource intensive?
+    /*
     Serial.print("Bus Voltage:   ");
     Serial.print(sensorReadings.busvoltage);
     Serial.println(" V");
@@ -116,39 +116,41 @@ void loop() {
     Serial.println("");
     Serial.print("Soil moisture: ");
     Serial.println(sensorReadings.soilMoisture);
+    */
     
-    //char barf[] = printf("busv="
+    // this is ugly
     String soil_moisture = "soil_moisture=";
     String upload = soil_moisture + sensorReadings.soilMoisture;
     String bus_voltage = "&bus_voltage=";
-    upload += bus_voltage + sensorReadings.busvoltage;
     String shunt_string = "&shunt_voltage=";
     String load_string = "&load_voltage=";
     String current_string = "&current_string=";
+    String raw_soil_string = "&raw_soil_moisture=";
+    upload += bus_voltage + sensorReadings.busvoltage;
     upload += shunt_string + sensorReadings.shuntvoltage;
     upload += load_string + sensorReadings.loadvoltage;
     upload += current_string + sensorReadings.current_mA;
+    upload += raw_soil_string + sensorReadings.rawSoilMoisture;
     Serial.println(upload);
    
     // POST sensor data to API
     HTTPClient http;
-    http.begin(HOST);
+    http.begin(API_IP, API_PORT, API_URL);
     // TODO: json
-    //http.addHeader("Content-Type", "text/plain");
-    //http.POST("{\"value\": 20}");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    // TODO: properly concatenate with sensor readings
-    http.POST("title=foo&body=bar&userId=1");
-    //http.POST(upload);
+    http.POST(upload);
     // ?
     http.writeToStream(&Serial);
     http.end();
     
-    yield();
-    delay(5000);
-    //ESP.deepSleep(5 * 1000000, WAKE_RF_DEFAULT);
-    Serial.println("NEVER GETS HERE");
+    //http.POST("{\"value\": 20}");
+    // TODO: properly concatenate with sensor readings
+    //http.POST("title=foo&body=bar&userId=1");
+    
     // TODO: close wifi connection?
     // TODO: delay and/or interrupt trigger
-    //delay(100);
+    //delay(1000);
+    yield();
+    // sleep for five minutes
+    ESP.deepSleep(300 * 1000000, WAKE_RF_DEFAULT);
 }
