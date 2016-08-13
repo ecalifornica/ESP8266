@@ -1,5 +1,5 @@
 *.swp
-config.h
+config.*
 .DS_Store
 cruft
 *.ino
