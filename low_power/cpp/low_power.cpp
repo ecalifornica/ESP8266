@@ -132,15 +132,32 @@ void loop() {
     upload += current_string + sensorReadings.current_mA;
     upload += raw_soil_string + sensorReadings.rawSoilMoisture;
     Serial.println(upload);
-   
-    // POST sensor data to API
+
+    // GET
     HTTPClient http;
     http.begin(API_IP, API_PORT, API_URL);
+    auto httpCode = http.GET();
+    Serial.println(httpCode);
+    String payload = http.getString();
+    Serial.println(payload);
+    
+   
+    // POST sensor data to API
+    Serial.println("HTTPClient");
+    //HTTPClient http;
+    Serial.println("http.begin");
+    http.begin(API_IP, API_PORT, API_URL);
     // TODO: json
+    Serial.println("addHeader");
     http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-    http.POST(upload);
+    Serial.println("http.POST");
+    httpCode = http.POST(upload);
+    Serial.print("POST http code: ");
+    Serial.println(httpCode);
     // ?
+    Serial.println("writeToStream");
     http.writeToStream(&Serial);
+    Serial.println("http.end");
     http.end();
     
     //http.POST("{\"value\": 20}");
@@ -150,7 +167,9 @@ void loop() {
     // TODO: close wifi connection?
     // TODO: delay and/or interrupt trigger
     //delay(1000);
+    Serial.println("yield");
     yield();
     // sleep for five minutes
+    Serial.println("sleep");
     ESP.deepSleep(300 * 1000000, WAKE_RF_DEFAULT);
 }
