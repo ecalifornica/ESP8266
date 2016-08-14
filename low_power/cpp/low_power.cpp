@@ -1,14 +1,16 @@
-// What is the proper indentation?
-// What do docstrings look like?
-// What is the flake8 of C++?
-
 #include <Wire.h>
 
 #include <Adafruit_Sensor.h>
 #include <Adafruit_INA219.h>
 
+#include <DNSServer.h>
+
 #include <ESP8266WiFi.h>
 #include <ESP8266HTTPClient.h>
+// For serving the network config page
+#include <ESP8266WebServer.h>
+
+#include "WiFiManager.h"  // https://github.com/tzapu/WiFiManager
 
 #include "config.h"
 
@@ -23,8 +25,8 @@ struct BarfDataType {
     float current_mA;
     float loadvoltage;
     
-    int rawSoilMoisture;
-    int soilMoisture;
+    int rawSoilMoisture = 0;
+    int soilMoisture = 0;
 };
 
 BarfDataType sensorReadings;
@@ -47,50 +49,70 @@ void readINA219(BarfDataType &variableName) {
 
 //
 void readSoilMoisture(BarfDataType &variableName) {
-    digitalWrite(14, HIGH);
+    digitalWrite(SOIL_SENSOR_POWER, HIGH);
     delay(100);
     variableName.rawSoilMoisture = analogRead(A0);
-    digitalWrite(14, LOW);
+    digitalWrite(SOIL_SENSOR_POWER, LOW);
     // map soil moisture readings to decimal.
     variableName.soilMoisture = map(variableName.rawSoilMoisture, 0, 1023, 0, 100);
+}
+
+
+// Network config
+void configModeCallback (WiFiManager *myWiFiManager) {
+    Serial.println("Entered config mode");
+    Serial.println(WiFi.softAPIP());
+    //if you used auto generated SSID, print it
+    Serial.println(myWiFiManager->getConfigPortalSSID());
 }
 
 
 //
 void setup() {
     Serial.begin(115200);
-    delay(100);
-   
+    
+    // wifi connection
+    // WiFiManager
+    // Local intialization. Once its business is done, there is no need to keep it around
+    // TODO: read library
+    WiFiManager wifiManager;
+    // reset saved network settings - for testing
+    //wifiManager.resetSettings();
+    
+    //set callback that gets called when connecting to previous WiFi fails, and enters Access Point mode
+    wifiManager.setAPCallback(configModeCallback);
+    
+    //fetches ssid and pass and tries to connect
+    //if it does not connect it starts an access point with the specified name
+    //here  "AutoConnectAP"
+    //and goes into a blocking loop awaiting configuration
+    if(!wifiManager.autoConnect()) {
+        Serial.println("failed to connect and hit timeout");
+        //reset and try again, or maybe put it to deep sleep
+        ESP.reset();
+        delay(1000);
+    }
+    Serial.print("wifi connected, ip address: ");
+    // TODO: wifiManager.localIP()
+    //Serial.println(WiFi.localIP());
+    
     // current sensor
     uint32_t currentFrequency;
     ina219.begin();
-   
-    // wifi connection
-    Serial.print("connecting to ");
-    Serial.print(NETWORK_SSID);
-    // TODO: read WiFi library
-    WiFi.begin(NETWORK_SSID, NETWORK_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.print("wifi connected, ip address: ");
-    Serial.println(WiFi.localIP());
-   
+    
     // status led
-    // replace with config variable
-    pinMode(12, OUTPUT);
+    pinMode(LED_PIN, OUTPUT);
     // soil moisture sensor power
-    pinMode(14, OUTPUT);
+    pinMode(SOIL_SENSOR_POWER, OUTPUT);
 }
 
 
 //
 void loop() {
-    digitalWrite(12, HIGH);
+    digitalWrite(LED_PIN, HIGH);
     delay(50);
-    digitalWrite(12, LOW);
-   
+    digitalWrite(LED_PIN, LOW);
+    
     // TODO: Network/server timestamp? Do we even need a timestamp from the device?
     sensorReadings.timestamp = millis();
     
@@ -98,25 +120,25 @@ void loop() {
     // TODO: graceful shutdown if voltage drops too low
     
     readSoilMoisture(sensorReadings);
-   
+    
     // is concatenating resource intensive?
     /*
-    Serial.print("Bus Voltage:   ");
-    Serial.print(sensorReadings.busvoltage);
-    Serial.println(" V");
-    Serial.print("Shunt Voltage: ");
-    Serial.print(sensorReadings.shuntvoltage);
-    Serial.println(" mV");
-    Serial.print("Load Voltage:  ");
-    Serial.print(sensorReadings.loadvoltage);
-    Serial.println(" V");
-    Serial.print("Current:       ");
-    Serial.print(sensorReadings.current_mA);
-    Serial.println(" mA");
-    Serial.println("");
-    Serial.print("Soil moisture: ");
-    Serial.println(sensorReadings.soilMoisture);
-    */
+     Serial.print("Bus Voltage:   ");
+     Serial.print(sensorReadings.busvoltage);
+     Serial.println(" V");
+     Serial.print("Shunt Voltage: ");
+     Serial.print(sensorReadings.shuntvoltage);
+     Serial.println(" mV");
+     Serial.print("Load Voltage:  ");
+     Serial.print(sensorReadings.loadvoltage);
+     Serial.println(" V");
+     Serial.print("Current:       ");
+     Serial.print(sensorReadings.current_mA);
+     Serial.println(" mA");
+     Serial.println("");
+     Serial.print("Soil moisture: ");
+     Serial.println(sensorReadings.soilMoisture);
+     */
     
     // this is ugly
     String soil_moisture = "soil_moisture=";
@@ -132,7 +154,7 @@ void loop() {
     upload += current_string + sensorReadings.current_mA;
     upload += raw_soil_string + sensorReadings.rawSoilMoisture;
     Serial.println(upload);
-
+    
     // GET
     HTTPClient http;
     http.begin(API_IP, API_PORT, API_URL);
@@ -141,7 +163,7 @@ void loop() {
     String payload = http.getString();
     Serial.println(payload);
     
-   
+    
     // POST sensor data to API
     Serial.println("HTTPClient");
     //HTTPClient http;
