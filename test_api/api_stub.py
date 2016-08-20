@@ -25,7 +25,7 @@ def barf():
         import pprint
         pprint.pprint(data_point)
         data_store.insert_one(data_point)
-        return data_point['timestamp']
+        return str(data_point['timestamp'])
     elif request.method == 'GET':
         print('\n\nGET')
         return 'get received'
