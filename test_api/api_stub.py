@@ -16,8 +16,8 @@ def barf():
     if request.method == 'POST':
         print('\n\nPOST')
         # print(request.data)
-        soil_moisture = request.form['soil_moisture']
-        voltage = request.form['bus_voltage']
+        soil_moisture = float(request.form['soil_moisture'])
+        voltage = float(request.form['bus_voltage'])
         data_point = {'soil moisture': soil_moisture,
                       'voltage': voltage,
                       'serial_number': 1,
