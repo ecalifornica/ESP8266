@@ -18,6 +18,8 @@ Adafruit_INA219 ina219;
 
 //
 struct BarfDataType {
+    char serialNumber[32];
+
     int timestamp;
     
     float shuntvoltage;
@@ -64,6 +66,7 @@ void configModeCallback (WiFiManager *myWiFiManager) {
     Serial.println(WiFi.softAPIP());
     //if you used auto generated SSID, print it
     Serial.println(myWiFiManager->getConfigPortalSSID());
+    sensorReadings.serialNumber = myWiFiManager->getConfigPortalSSID();
 }
 
 
@@ -153,6 +156,8 @@ void loop() {
     upload += load_string + sensorReadings.loadvoltage;
     upload += current_string + sensorReadings.current_mA;
     upload += raw_soil_string + sensorReadings.rawSoilMoisture;
+    String sensor_id_string = "sensor_id=";
+    upload += sensor_id_string + sensorReadings.serialNumber;
     Serial.println(upload);
     
     // GET
