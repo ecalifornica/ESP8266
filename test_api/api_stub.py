@@ -14,22 +14,11 @@ data_store = mc.sensornet.sensors
 app = Flask(__name__)
 
 
-def running_average():
-    _sum = 0.0
-    count = 0
-    value = yield(float('nan'))
-    while True:
-        _sum += value
-        count += 1
-        value = yield(_sum/count)
-
-ravg = running_average()
-next(ravg)
-
-
 def produce_plot():
+
     timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
     for data_point in data_store.find():
+
         moisture = float(data_point.get('moisture', 0))
         moistures['moisture'].append(moisture)
         avg_moist_df = pd.DataFrame(moistures)
@@ -41,10 +30,8 @@ def produce_plot():
         avg_voltage_df = pd.DataFrame(voltages)
         avg_voltage = avg_voltage_df.rolling(center=False,
                                              window=20).mean()
-        # avg_v = ravg.send(voltage)
-        # voltages.append(avg_v)
 
-        # timestamps.append(data_point.get('timestamp') * 1000)
+        # UTC -> PDT, server is 3 hours fast
         timestamp = data_point.get('timestamp') - 36000
         timestamps.append(timestamp * 1000)
 
@@ -55,32 +42,32 @@ def produce_plot():
                y_axis_label='voltage',
                tools='')
 
-    p.extra_y_ranges = {'barf': Range1d(start=-5, end=100)}
-    p.extra_y_ranges = {'voltage': Range1d(start=-5, end=100)}
-
     p.line(timestamps,
            avg_voltage,
-           legend="v",
+           legend="voltage",
            line_width=2,
            color='red')
+
     '''
+    # moisture
+    p.extra_y_ranges = {'moisture': Range1d(start=-5, end=100)}
     p.line(timestamps,
            avg_moist,
            legend="moisture",
            line_width=2,
            color='blue',
-           y_range_name='barf')
-
-    p.add_layout(LinearAxis(y_range_name = 'barf',
+           y_range_name='moisture')
+    p.add_layout(LinearAxis(y_range_name = 'moisture',
                             axis_label='moisture'),
                             'right')
-
     '''
+
     save(p)
 
 
 @app.route('/', methods=['GET', 'POST'])
 def barf():
+
     if request.method == 'POST':
         print('\n\nPOST')
         # print(request.data)
@@ -121,4 +108,4 @@ def display():
 
 if __name__ == "__main__":
     # http2 instead of websockets
-    app.run(host='0.0.0.0', port=int(config.flask_port), debug=True)
+    app.run(host='0.0.0.0', port=int(config.flask_port))
