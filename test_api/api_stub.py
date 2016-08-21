@@ -32,12 +32,12 @@ def produce_plot():
                                              window=20).mean()
 
         # UTC -> PDT, server is 3 hours fast
-        timestamp = data_point.get('timestamp') - 36000
+        timestamp = data_point.get('timestamp') - 43200
         timestamps.append(timestamp * 1000)
 
     output_file('test_api/bokeh_output/lines.html')
     p = figure(title='ESP8266 Sensor #1',
-               x_axis_label='time (UTC-7:00)',
+               x_axis_label='time (UTC-8:00)',
                x_axis_type='datetime',
                y_axis_label='voltage',
                tools='')
@@ -90,7 +90,9 @@ def barf():
 
     elif request.method == 'GET':
         print('\n\nGET')
-
+        if request.args.get('refresh'):
+            print('refreshing plot')
+            produce_plot()
         return send_from_directory(config.static_files_path,
                                    'test_api/bokeh_output/lines.html')
 
