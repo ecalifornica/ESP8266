@@ -3,3 +3,4 @@ config.*
 .DS_Store
 cruft
 *.ino
+bokeh_output
