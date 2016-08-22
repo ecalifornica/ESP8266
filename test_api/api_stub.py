@@ -110,4 +110,4 @@ def display():
 
 if __name__ == "__main__":
     # http2 instead of websockets
-    app.run(host='0.0.0.0', port=int(config.flask_port))
+    app.run(host='0.0.0.0', port=config.flask_port)

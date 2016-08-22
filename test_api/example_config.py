@@ -1,1 +1,1 @@
-flask_port = "8080"
+flask_port = 8080
