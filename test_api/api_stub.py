@@ -23,7 +23,7 @@ def produce_plot():
         moistures['moisture'].append(moisture)
         avg_moist_df = pd.DataFrame(moistures)
         avg_moist = avg_moist_df.rolling(center=False,
-                                         window=30).mean()
+                                         window=2).mean()
 
         voltage = float(data_point.get('voltage', 0))
         voltages['voltage'].append(voltage)
@@ -48,8 +48,8 @@ def produce_plot():
            line_width=2,
            color='red')
 
-    '''
     # moisture
+    print('plotting moisture')
     p.extra_y_ranges = {'moisture': Range1d(start=-5, end=100)}
     p.line(timestamps,
            avg_moist,
@@ -57,10 +57,9 @@ def produce_plot():
            line_width=2,
            color='blue',
            y_range_name='moisture')
-    p.add_layout(LinearAxis(y_range_name = 'moisture',
+    p.add_layout(LinearAxis(y_range_name='moisture',
                             axis_label='moisture'),
-                            'right')
-    '''
+                 'right')
 
     save(p)
 
@@ -90,22 +89,17 @@ def barf():
 
     elif request.method == 'GET':
         print('\n\nGET')
-        if request.args.get('refresh'):
-            print('refreshing plot')
-            produce_plot()
-        return send_from_directory(config.static_files_path,
-                                   'test_api/bokeh_output/lines.html')
+        return 'GET received'
 
 
 @app.route('/api', methods=['GET'])
 def display():
-    print('PLOT GET')
-    plot_data = 'TIMESTAMP,SERIAL,DATA\n'
-    for data_point in data_store.find():
-        plot_data += '{},{},{}\n'.format(data_point.get('timestamp'),
-                                         data_point.get('serial_number'),
-                                         data_point.get('voltage'))
-    return plot_data
+    print('\n\nGET')
+    if request.args.get('refresh'):
+        print('refreshing plot')
+        produce_plot()
+    return send_from_directory(config.static_files_path,
+                               'test_api/bokeh_output/lines.html')
 
 
 if __name__ == "__main__":
