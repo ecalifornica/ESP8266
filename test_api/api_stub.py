@@ -19,7 +19,7 @@ def produce_plot():
     timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
     for data_point in data_store.find():
 
-        moisture = float(data_point.get('moisture', 0))
+        moisture = float(data_point.get('soil moisture', 0))
         moistures['moisture'].append(moisture)
         avg_moist_df = pd.DataFrame(moistures)
         avg_moist = avg_moist_df.rolling(center=False,
@@ -49,7 +49,6 @@ def produce_plot():
            color='red')
 
     # moisture
-    print('plotting moisture')
     p.extra_y_ranges = {'moisture': Range1d(start=-5, end=100)}
     p.line(timestamps,
            avg_moist,
@@ -81,10 +80,13 @@ def barf():
                                                 timestamp),
                                   soil_moisture,
                                   voltage))
-        data_store.insert_one(data_point)
 
+        r = data_store.insert_one(data_point)
+        print('MONGO ID:', r.inserted_id)
+        
         produce_plot()
-
+        
+        # TODO: return sensor data hash
         return str(data_point['timestamp'])
 
     elif request.method == 'GET':
