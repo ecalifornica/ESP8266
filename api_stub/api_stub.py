@@ -14,7 +14,9 @@ data_store = mc.sensornet.sensors
 app = Flask(__name__)
 
 
-def produce_plot():
+def produce_plot(mean_window):
+    if not mean_window:
+        mean_window = 20
 
     timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
     for data_point in data_store.find():
@@ -23,19 +25,19 @@ def produce_plot():
         moistures['moisture'].append(moisture)
         avg_moist_df = pd.DataFrame(moistures)
         avg_moist = avg_moist_df.rolling(center=False,
-                                         window=2).mean()
+                                         window=mean_window).mean()
 
         voltage = float(data_point.get('voltage', 0))
         voltages['voltage'].append(voltage)
         avg_voltage_df = pd.DataFrame(voltages)
         avg_voltage = avg_voltage_df.rolling(center=False,
-                                             window=20).mean()
+                                             window=mean_window).mean()
 
         # UTC -> PDT, server is 3 hours fast
         timestamp = data_point.get('timestamp') - 43200
         timestamps.append(timestamp * 1000)
 
-    output_file('test_api/bokeh_output/lines.html')
+    output_file(config.bokeh_output_dir + 'lines.html')
     p = figure(title='ESP8266 Sensor #1',
                x_axis_label='time (UTC-8:00)',
                x_axis_type='datetime',
@@ -100,9 +102,9 @@ def display():
     print('\n\nGET')
     if request.args.get('refresh'):
         print('refreshing plot')
-        produce_plot()
+        produce_plot(int(request.args.get('window')))
     return send_from_directory(config.static_files_path,
-                               'test_api/bokeh_output/lines.html')
+                               config.bokeh_output_dir + 'lines.html')
 
 
 @app.route('/gap_test', methods=['GET'])
@@ -134,11 +136,11 @@ def gap_test():
     p.rect(df.date[inc], mids[inc], w, spans[inc], fill_color="#D5E1DD", line_color="black")
     p.rect(df.date[dec], mids[dec], w, spans[dec], fill_color="#F2583E", line_color="black")
 
-    output_file('test_api/bokeh_output/candlestick.html', title='candlestick.py example')
+    output_file(config.bokeh_output_dir + 'candlestick.html', title='candlestick.py example')
 
     save(p)
     return send_from_directory(config.static_files_path,
-                               'test_api/bokeh_output/candlestick.html')
+                               config.bokeh_output_dir + 'candlestick.html')
 
 
 if __name__ == "__main__":
