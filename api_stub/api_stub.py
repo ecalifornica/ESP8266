@@ -14,9 +14,9 @@ data_store = mc.sensornet.sensors
 app = Flask(__name__)
 
 
-def produce_plot(mean_window):
-    if not mean_window:
-        mean_window = 20
+def produce_plot(mean_window=1):
+    '''
+    '''
 
     timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
     for data_point in data_store.find():
