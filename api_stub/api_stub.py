@@ -19,14 +19,22 @@ mc = pymongo.MongoClient()
 data_store = mc.sensornet.sensors
 
 
-def produce_plot(mean_window=1):
+def produce_plot(mean_window=None, search_limit=None):
     '''
     '''
+    if not mean_window:
+        mean_window = 1
+    else:
+        mean_window = int(mean_window)
+
+    if not search_limit:
+        search_limit = 1000
+    else:
+        search_limit = int(search_limit)
 
     try:
         timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
-        for data_point in data_store.find():
-
+        for data_point in data_store.find(sort=[('timestamp', -1)], limit=search_limit):
             moisture = float(data_point.get('soil moisture', 0))
             moistures['moisture'].append(moisture)
             avg_moist_df = pd.DataFrame(moistures)
@@ -81,6 +89,7 @@ def barf():
     if request.method == 'POST':
         try:
             print('\n\nPOST')
+            print(request)
             # print(request.data)
             soil_moisture = float(request.form['soil_moisture'])
             voltage = float(request.form['bus_voltage'])
@@ -106,16 +115,26 @@ def barf():
             sentry.captureException()
 
     elif request.method == 'GET':
-        print('\n\nGET')
-        return 'GET received'
+        try:
+            print('\n\nGET')
+            print(request)
+            return 'GET received'
+        except:
+            sentry.captureMessage('sensor GET (pre post) failure')
+            sentry.captureException()
+
 
 
 @app.route('/api', methods=['GET'])
 def display():
-    print('\n\nGET')
-    if request.args.get('refresh'):
+    print('\n\nAPI GET: {}'.format(time.strftime('%Y-%m-%d %H:%M:%S',
+                                                 time.gmtime())))
+    refresh = request.args.get('refresh')
+    window = request.args.get('window')
+    limit = request.args.get('limit')
+    if refresh:
         print('refreshing plot')
-        produce_plot(int(request.args.get('window')))
+        produce_plot(mean_window=window, search_limit=limit)
     return send_from_directory(config.static_files_path,
                                config.bokeh_output_dir + 'lines.html')
 
