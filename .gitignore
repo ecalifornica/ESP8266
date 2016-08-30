@@ -4,3 +4,4 @@ config.*
 cruft
 *.ino
 bokeh_output
+__pycache__

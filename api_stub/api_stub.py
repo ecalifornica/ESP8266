@@ -10,9 +10,14 @@ from raven.contrib.flask import Sentry
 
 import config
 
-app = Flask(__name__)
+logger = logging.getLogger('api_stub')
+logger.setLevel(logging.DEBUG)
+stdo = logging.StreamHandler()
+logger.addHandler(stdo)
 
-sentry = Sentry(app, logging=True, level=logging.ERROR,
+application = Flask(__name__)
+
+sentry = Sentry(application, logging=True, level=logging.ERROR,
                 dsn=config.sentry_dsn)
 
 mc = pymongo.MongoClient()
@@ -34,7 +39,8 @@ def produce_plot(mean_window=None, search_limit=None):
 
     try:
         timestamps, moistures, voltages = [], {'moisture': []}, {'voltage': []}
-        for data_point in data_store.find(sort=[('timestamp', -1)], limit=search_limit):
+        for data_point in data_store.find(sort=[('timestamp', -1)],
+                                          limit=search_limit):
             moisture = float(data_point.get('soil moisture', 0))
             moistures['moisture'].append(moisture)
             avg_moist_df = pd.DataFrame(moistures)
@@ -83,13 +89,13 @@ def produce_plot(mean_window=None, search_limit=None):
         sentry.captureException()
 
 
-@app.route('/', methods=['GET', 'POST'])
+@application.route('/', methods=['GET', 'POST'])
 def barf():
 
     if request.method == 'POST':
         try:
-            print('\n\nPOST')
-            print(request)
+            logger.info('\n\nPOST')
+            logger.info(request)
             # print(request.data)
             soil_moisture = float(request.form['soil_moisture'])
             voltage = float(request.form['bus_voltage'])
@@ -98,13 +104,13 @@ def barf():
                           'voltage': voltage,
                           'serial_number': 1,
                           'timestamp': time.mktime(timestamp)}
-            print('{} {}% {}v'.format(time.strftime('%Y-%m-%d %H:%M:%S',
-                                                    timestamp),
-                                      soil_moisture,
-                                      voltage))
+            logger.info('{} {}% {}v'.format(time.strftime('%Y-%m-%d %H:%M:%S',
+                                                          timestamp),
+                                            soil_moisture,
+                                            voltage))
 
             r = data_store.insert_one(data_point)
-            print('MONGO ID:', r.inserted_id)
+            logger.info('MONGO ID:', r.inserted_id)
 
             produce_plot()
 
@@ -116,36 +122,35 @@ def barf():
 
     elif request.method == 'GET':
         try:
-            print('\n\nGET')
-            print(request)
+            logger.info('\n\nGET')
+            logger.info(request)
             return 'GET received'
         except:
             sentry.captureMessage('sensor GET (pre post) failure')
             sentry.captureException()
 
 
-
-@app.route('/api', methods=['GET'])
+@application.route('/api', methods=['GET'])
 def display():
-    print('\n\nAPI GET: {}'.format(time.strftime('%Y-%m-%d %H:%M:%S',
-                                                 time.gmtime())))
+    logger.info('\n\nAPI GET: {}'.format(time.strftime('%Y-%m-%d %H:%M:%S',
+                                                       time.gmtime())))
     refresh = request.args.get('refresh')
     window = request.args.get('window')
     limit = request.args.get('limit')
     if refresh:
-        print('refreshing plot')
+        logger.info('refreshing plot')
         produce_plot(mean_window=window, search_limit=limit)
     return send_from_directory(config.static_files_path,
                                config.bokeh_output_dir + 'lines.html')
 
 
-@app.route('/gap_test', methods=['GET'])
+@application.route('/gap_test', methods=['GET'])
 def gap_test():
     from math import pi
 
     import pandas as pd
 
-    from bokeh.plotting import figure, show, output_file
+    from bokeh.plotting import figure, save, output_file
     from bokeh.sampledata.stocks import MSFT
 
     df = pd.DataFrame(MSFT)[:50]
@@ -177,4 +182,10 @@ def gap_test():
 
 if __name__ == "__main__":
     # http2 instead of websockets
-    app.run(host='0.0.0.0', port=config.flask_port)
+    '''
+    print('Loggers:')
+    for i in logging.Logger.manager.loggerDict:
+        print(i)
+    '''
+    logger.info('Running server...')
+    application.run(host='0.0.0.0', port=config.flask_port)
