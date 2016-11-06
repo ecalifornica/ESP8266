@@ -110,7 +110,7 @@ def barf():
                                             voltage))
 
             r = data_store.insert_one(data_point)
-            logger.info('MONGO ID:', r.inserted_id)
+            print('MONGO ID:', r.inserted_id)
 
             produce_plot()
 
@@ -130,19 +130,23 @@ def barf():
             sentry.captureException()
 
 
-@application.route('/api', methods=['GET'])
+@application.route('/api', methods=['GET', 'POST'])
 def display():
-    logger.info('\n\nAPI GET: {}'.format(time.strftime('%Y-%m-%d %H:%M:%S',
-                                                       time.gmtime())))
-    refresh = request.args.get('refresh')
-    window = request.args.get('window')
-    limit = request.args.get('limit')
-    if refresh:
-        logger.info('refreshing plot')
-        produce_plot(mean_window=window, search_limit=limit)
-    return send_from_directory(config.static_files_path,
-                               config.bokeh_output_dir + 'lines.html')
+    if request.method == 'GET':
+        logger.info('\n\nAPI GET: {}'.format(time.strftime('%Y-%m-%d %H:%M:%S',
+                                                           time.gmtime())))
+        refresh = request.args.get('refresh')
+        window = request.args.get('window')
+        limit = request.args.get('limit')
+        if refresh:
+            logger.info('refreshing plot')
+            produce_plot(mean_window=window, search_limit=limit)
+        return send_from_directory(config.static_files_path,
+                                   config.bokeh_output_dir + 'lines.html')
 
+    elif request.method == 'POST':
+        print('data:', reqeust.data)
+        print('form:', request.form)
 
 @application.route('/gap_test', methods=['GET'])
 def gap_test():
